@@ -627,10 +627,19 @@ function update(dt){
     state.aimX += state.aimSwivel*SWIVEL*dt;
     state.aimX = Math.max(30*DPR, Math.min(W-30*DPR, state.aimX));
   }
-  // on touch, keep the crosshair pinned to the alien line height so it can't drift off
-  if(IS_TOUCH && formation){
-    const lineY = CY + formation.y*posS(formation.z);
-    state.aimY += (lineY - state.aimY)*Math.min(1,dt*7);
+  // on touch, guide the crosshair vertically: rise to the UFO when one is
+  // flying (so you can grab the bonus), otherwise rest on the alien line.
+  if(IS_TOUCH){
+    let targetY;
+    if(ufo){
+      const pu=project(ufo.x,ufo.y,ufo.z);
+      targetY = pu.y;                          // reach up for the bonus ship
+    } else if(formation){
+      targetY = CY + formation.y*posS(formation.z);
+    } else {
+      targetY = state.aimY;
+    }
+    state.aimY += (targetY - state.aimY)*Math.min(1,dt*6);
   }
 
   // fire when AUTO toggle is on OR the manual FIRE button is held; fire() self-limits cadence
