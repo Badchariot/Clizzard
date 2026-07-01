@@ -513,7 +513,9 @@ function fire(){
     if(!inv.alive) continue;
     const z=invZ(inv);
     const p=project(formation.x+inv.gx, formation.y+inv.gy, z);
-    const hw = 46*sizeS(z)*1.15, hh = 34*sizeS(z)*1.15;
+    const _d = Math.min(1, Math.max(0,(640-z)/530));
+    const _loom = 1 + _d*_d*3.2;
+    const hw = 46*sizeS(z)*1.15*_loom, hh = 34*sizeS(z)*1.15*_loom;
     if(Math.abs(state.aimX-p.x)<hw && Math.abs(state.aimY-p.y)<hh && z<bestZ){
       kind="invader"; ref=inv; bestZ=z;
     }
@@ -817,7 +819,9 @@ function renderSky(){
     const color = danger>0.55 ? "#ff5a5a" : (danger>0.25? "#ffd95a" : "#5dff6d");
     const spr=getSprite(inv.type,inv.frame,color);
     const sc=sizeS(z);
-    const w=spr.width*sc*0.085*DPR, h=spr.height*sc*0.085*DPR;
+    // base size grows with proximity; loom makes it accelerate as they drop close
+    const loom = 0.085 * (1 + danger*danger*3.2);
+    const w=spr.width*sc*loom*DPR, h=spr.height*sc*loom*DPR;
     ctx.globalAlpha = Math.min(1, 0.35 + sc*1.4);
     ctx.drawImage(spr, p.x-w/2, p.y-h/2, w, h);
   }
