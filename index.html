@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CLIZZARD — an arcade for machine-dreamed games</title>
+<meta name="description" content="Clizzard is a tiny arcade for browser games dreamed up with AI. Drop in a quarter. Play in your browser. No install.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Monoton&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0b0820;
+    --void-2:#140b30;
+    --carpet:#1c0f45;
+    --magenta:#ff2d95;
+    --cyan:#23e5db;
+    --violet:#8a4bff;
+    --amber:#ffd98a;
+    --cream:#fff4d6;
+    --ink:#e9e2ff;
+    --ink-dim:#9a8fc9;
+    --edge:rgba(138,75,255,0.28);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Chakra Petch",ui-monospace,monospace;
+    color:var(--ink);
+    background:var(--void);
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* cosmic arcade-carpet backdrop */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-2;
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,45,149,0.16), transparent 42%),
+      radial-gradient(circle at 82% 20%, rgba(35,229,219,0.14), transparent 44%),
+      radial-gradient(circle at 50% 96%, rgba(138,75,255,0.20), transparent 55%),
+      linear-gradient(160deg, var(--void) 0%, var(--void-2) 55%, var(--carpet) 100%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(138,75,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(138,75,255,0.05) 1px, transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(ellipse at 50% 30%, #000 0%, transparent 78%);
+    -webkit-mask-image:radial-gradient(ellipse at 50% 30%, #000 0%, transparent 78%);
+  }
+
+  a{color:inherit}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 22px}
+
+  /* ---------- top bar ---------- */
+  header.bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 22px;max-width:1160px;margin:0 auto;
+  }
+  .coin{
+    font-size:13px;letter-spacing:.28em;color:var(--cyan);
+    text-transform:uppercase;text-shadow:0 0 10px rgba(35,229,219,.5);
+  }
+  .bar nav{display:flex;gap:20px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+  .bar nav a{text-decoration:none;transition:color .2s}
+  .bar nav a:hover{color:var(--amber)}
+
+  /* ---------- hero marquee ---------- */
+  .hero{text-align:center;padding:36px 0 20px}
+  .marquee{
+    font-family:"Monoton",cursive;
+    font-size:clamp(52px,13vw,152px);
+    line-height:.92;letter-spacing:.02em;
+    color:var(--cream);
+    text-shadow:
+      0 0 6px #fff,
+      0 0 22px var(--magenta),
+      0 0 44px var(--magenta),
+      0 0 90px rgba(255,45,149,.7);
+    animation:flick 6s infinite steps(1);
+  }
+  @keyframes flick{
+    0%,100%{opacity:1} 96.5%{opacity:1} 97%{opacity:.35} 97.6%{opacity:1} 98.3%{opacity:.5} 98.8%{opacity:1}
+  }
+  .tag{
+    margin-top:20px;font-size:clamp(14px,2.2vw,20px);
+    letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);
+    text-shadow:0 0 14px rgba(35,229,219,.45);
+  }
+  .sub{
+    margin:16px auto 0;max-width:560px;color:var(--ink-dim);
+    font-size:15px;line-height:1.7;letter-spacing:.02em;
+  }
+  .hero .cta{
+    display:inline-flex;gap:10px;margin-top:26px;align-items:center;
+    font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:14px;
+    color:var(--void);background:var(--amber);
+    padding:13px 26px;border-radius:2px;text-decoration:none;
+    box-shadow:0 0 0 1px var(--amber), 0 0 22px rgba(255,217,138,.5);
+    transition:transform .12s, box-shadow .2s;
+  }
+  .hero .cta:hover{transform:translateY(-2px);box-shadow:0 0 0 1px var(--amber),0 0 34px rgba(255,217,138,.8)}
+
+  /* ---------- section head ---------- */
+  .floor{padding:40px 0 30px}
+  .floorhead{
+    display:flex;align-items:baseline;gap:16px;margin-bottom:26px;
+    border-bottom:1px solid var(--edge);padding-bottom:12px;
+  }
+  .floorhead h2{
+    font-size:15px;letter-spacing:.32em;text-transform:uppercase;font-weight:600;color:var(--amber);
+  }
+  .floorhead .count{font-size:13px;color:var(--ink-dim);letter-spacing:.2em}
+
+  /* ---------- cabinet grid ---------- */
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:22px;padding-bottom:30px;
+  }
+  .cab{
+    position:relative;display:flex;flex-direction:column;
+    background:linear-gradient(180deg, rgba(28,15,69,.85), rgba(11,8,32,.92));
+    border:1px solid var(--edge);border-radius:12px;overflow:hidden;
+    transition:transform .16s, border-color .2s, box-shadow .2s;
+  }
+  .cab.live{cursor:pointer}
+  .cab.live:hover{
+    transform:translateY(-5px);
+    border-color:rgba(35,229,219,.6);
+    box-shadow:0 14px 40px rgba(0,0,0,.5), 0 0 26px rgba(35,229,219,.22);
+  }
+  .cab.feat{grid-column:span 2}
+  @media(max-width:620px){ .cab.feat{grid-column:span 1} }
+  /* marquee strip */
+  .cab .cmar{
+    padding:11px 16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    font-size:14px;color:var(--cream);
+    background:linear-gradient(90deg, rgba(255,45,149,.22), rgba(138,75,255,.14));
+    border-bottom:1px solid var(--edge);
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .cab .cmar .pts{font-size:11px;color:var(--cyan);letter-spacing:.16em}
+  /* screen */
+  .screen{
+    position:relative;aspect-ratio:16/10;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 40%, #14092a, #060312);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .cab.feat .screen{aspect-ratio:16/7}
+  .screen svg{width:64%;height:64%;filter:drop-shadow(0 0 12px currentColor)}
+  .scan{position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);}
+  .playtab{
+    position:absolute;bottom:12px;left:50%;transform:translateX(-50%) translateY(6px);
+    opacity:0;transition:.18s;
+    font-weight:700;letter-spacing:.2em;text-transform:uppercase;font-size:12px;
+    color:var(--void);background:var(--cyan);padding:9px 20px;border-radius:2px;
+    box-shadow:0 0 20px rgba(35,229,219,.6);
+  }
+  .cab.live:hover .playtab{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* control panel */
+  .panel{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .panel .blurb{font-size:13px;line-height:1.55;color:var(--ink-dim)}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto}
+  .tags span{
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);
+    border:1px solid rgba(35,229,219,.3);border-radius:100px;padding:3px 10px;
+  }
+  .cab.soon{opacity:.72}
+  .cab.soon .cmar{color:var(--ink-dim);background:rgba(138,75,255,.08)}
+  .cab.soon .screen{filter:grayscale(.4) brightness(.7)}
+  .soonlabel{font-family:"Monoton",cursive;font-size:22px;color:var(--ink-dim);opacity:.5;text-align:center;letter-spacing:.04em}
+
+  /* ---------- how it works ---------- */
+  .info{padding:30px 0 20px}
+  .info .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+  .info .card{border:1px solid var(--edge);border-radius:10px;padding:20px;background:rgba(11,8,32,.5)}
+  .info .card .k{font-family:"Monoton",cursive;color:var(--magenta);font-size:20px;margin-bottom:12px;
+    text-shadow:0 0 14px rgba(255,45,149,.5)}
+  .info .card h3{font-size:14px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;color:var(--amber)}
+  .info .card p{font-size:13px;line-height:1.6;color:var(--ink-dim)}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--edge);margin-top:40px;padding:26px 0 40px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center}
+  footer .lg{font-family:"Monoton",cursive;color:var(--cream);font-size:22px;text-shadow:0 0 16px var(--magenta)}
+  footer .meta{font-size:12px;color:var(--ink-dim);letter-spacing:.06em;line-height:1.7}
+  footer a{color:var(--cyan);text-decoration:none}
+  footer a:hover{color:var(--amber)}
+
+  /* ---------- game modal ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:100;display:none;
+    align-items:center;justify-content:center;padding:24px;
+    background:rgba(4,2,14,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .modal.open{display:flex}
+  .cabinet{
+    width:min(980px,100%);max-height:100%;display:flex;flex-direction:column;
+    border:1px solid rgba(35,229,219,.4);border-radius:14px;overflow:hidden;
+    background:linear-gradient(180deg,#160b34,#0a0620);
+    box-shadow:0 0 60px rgba(255,45,149,.25),0 0 90px rgba(35,229,219,.15);
+  }
+  .cabinet .bezel{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 16px;border-bottom:1px solid var(--edge);
+    background:linear-gradient(90deg, rgba(255,45,149,.18), rgba(138,75,255,.12));
+  }
+  .cabinet .bezel .name{font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:14px;color:var(--cream)}
+  .cabinet .bezel .ctl{display:flex;gap:8px}
+  .cabinet .bezel button{
+    font-family:"Chakra Petch",monospace;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    font-size:12px;color:var(--ink);background:transparent;
+    border:1px solid rgba(35,229,219,.45);border-radius:3px;padding:8px 14px;cursor:pointer;
+    transition:.15s;
+  }
+  .cabinet .bezel button:hover{background:rgba(35,229,219,.16);color:#fff}
+  .cabinet .bezel .close{border-color:rgba(255,45,149,.5)}
+  .cabinet .bezel .close:hover{background:rgba(255,45,149,.18)}
+  .cabinet .screenwrap{position:relative;background:#000;flex:1;min-height:0}
+  .cabinet iframe{display:block;width:100%;height:min(70vh,620px);border:0}
+  @media(max-width:640px){
+    .modal{padding:0}
+    .cabinet{width:100%;height:100%;max-height:100%;border-radius:0;border:0}
+    .cabinet iframe{height:100%}
+    .cabinet .screenwrap{flex:1}
+  }
+
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  @media (prefers-reduced-motion: reduce){ .marquee{animation:none} *{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="coin">◉ Insert Coin</div>
+  <nav>
+    <a href="#arcade">Arcade</a>
+    <a href="#how">How it works</a>
+  </nav>
+</header>
+
+<section class="hero wrap">
+  <h1 class="marquee">CLIZZARD</h1>
+  <p class="tag">An arcade for machine-dreamed games</p>
+  <p class="sub">A tiny cabinet hall for browser games conjured with AI. No downloads, no accounts — pick a machine, drop a quarter, play right here. New cabinets roll in as they're built.</p>
+  <a class="cta" href="#arcade">▶ Enter the arcade</a>
+</section>
+
+<section class="floor wrap" id="arcade">
+  <div class="floorhead">
+    <h2>The Floor</h2>
+    <span class="count" id="cabcount"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="info wrap" id="how">
+  <div class="floorhead"><h2>How the arcade works</h2></div>
+  <div class="cards">
+    <div class="card">
+      <div class="k">1</div>
+      <h3>Pick a cabinet</h3>
+      <p>Every machine on the floor is a self-contained browser game. Tap one to power up its screen right on the page.</p>
+    </div>
+    <div class="card">
+      <div class="k">2</div>
+      <h3>Play anywhere</h3>
+      <p>Keyboard and mouse on a desktop, thumbs on a phone or tablet. Hit fullscreen for the full cabinet experience.</p>
+    </div>
+    <div class="card">
+      <div class="k">3</div>
+      <h3>More keep coming</h3>
+      <p>Clizzard is a home for games dreamed up with AI. The empty cabinets aren't broken — they're waiting.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="lg">CLIZZARD</div>
+    <div class="meta">
+      © <span id="yr"></span> Clizzard Arcade · Built in Rio Rancho, NM<br>
+      A playground by <a href="https://badchariot.com" target="_blank" rel="noopener">BadChariot</a>
+    </div>
+  </div>
+</footer>
+
+<!-- game player -->
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Game player">
+  <div class="cabinet">
+    <div class="bezel">
+      <span class="name" id="mName">GAME</span>
+      <div class="ctl">
+        <button id="mFull">⛶ Fullscreen</button>
+        <button class="close" id="mClose">✕ Close</button>
+      </div>
+    </div>
+    <div class="screenwrap">
+      <iframe id="mFrame" title="game" allow="fullscreen; autoplay" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   THE ARCADE FLOOR
+   To add a game: drop its folder in /games/<id>/ with an
+   index.html, then add one entry to this list. That's it.
+   ============================================================ */
+const GAMES = [
+  {
+    id:"sky-invaders",
+    title:"Sky Invaders",
+    pts:"Ground Defense",
+    blurb:"Space Invaders tipped on its head — you're the gunner on the ground, staring up as the swarm descends. Run between shields, shoot their bombs out of the air, mind your magazine.",
+    path:"games/sky-invaders/index.html",
+    tags:["Shooter","Retro","1P"],
+    accent:"#23e5db",
+    status:"live",
+    feat:true,
+    art:"invader"
+  },
+  { id:"soon-a", title:"Cabinet Open", status:"soon", art:"soon" },
+  { id:"soon-b", title:"Cabinet Open", status:"soon", art:"soon" },
+  { id:"soon-c", title:"Cabinet Open", status:"soon", art:"soon" }
+];
+
+/* --- cover art (inline SVG, no external assets) --- */
+function art(kind, accent){
+  if(kind==="invader"){
+    // classic crab invader, drawn from a bitmap grid
+    const rows=[
+      "00100000100","00010001000","00111111100","01101110110",
+      "11111111111","10111111101","10100000101","00011011000"];
+    const u=10, W=rows[0].length*u, H=rows.length*u;
+    let cells="";
+    for(let y=0;y<rows.length;y++)for(let x=0;x<rows[0].length;x++)
+      if(rows[y][x]==="1") cells+=`<rect x="${x*u}" y="${y*u}" width="${u}" height="${u}"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" style="color:${accent}" xmlns="http://www.w3.org/2000/svg">
+      <g fill="currentColor">${cells}</g></svg>`;
+  }
+  return `<div class="soonlabel">◇ ◇ ◇</div>`;
+}
+
+/* --- render the floor --- */
+const grid=document.getElementById("grid");
+let liveCount=0;
+GAMES.forEach(g=>{
+  const el=document.createElement("div");
+  const live=g.status==="live";
+  if(live) liveCount++;
+  el.className="cab "+(live?"live":"soon")+(g.feat?" feat":"");
+  if(live){
+    el.innerHTML=`
+      <div class="cmar"><span>${g.title}</span><span class="pts">${g.pts||""}</span></div>
+      <div class="screen">${art(g.art,g.accent)}<div class="scan"></div><div class="playtab">▶ Play</div></div>
+      <div class="panel">
+        <p class="blurb">${g.blurb}</p>
+        <div class="tags">${(g.tags||[]).map(t=>`<span>${t}</span>`).join("")}</div>
+      </div>`;
+    el.addEventListener("click",()=>openGame(g));
+    el.tabIndex=0;
+    el.setAttribute("role","button");
+    el.setAttribute("aria-label","Play "+g.title);
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();openGame(g);} });
+  } else {
+    el.innerHTML=`
+      <div class="cmar"><span>${g.title}</span></div>
+      <div class="screen">${art("soon")}<div class="scan"></div></div>
+      <div class="panel"><p class="blurb">This machine is powered down — a future game will live here.</p></div>`;
+  }
+  grid.appendChild(el);
+});
+document.getElementById("cabcount").textContent =
+  liveCount+" playing · "+(GAMES.length-liveCount)+" open";
+document.getElementById("yr").textContent=new Date().getFullYear();
+
+/* --- game player modal --- */
+const modal=document.getElementById("modal");
+const frame=document.getElementById("mFrame");
+const mName=document.getElementById("mName");
+function openGame(g){
+  mName.textContent=g.title;
+  frame.src=g.path;
+  modal.classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeGame(){
+  modal.classList.remove("open");
+  frame.src="about:blank";           // stop the game + its audio
+  document.body.style.overflow="";
+}
+document.getElementById("mClose").addEventListener("click",closeGame);
+modal.addEventListener("click",e=>{ if(e.target===modal) closeGame(); });
+window.addEventListener("keydown",e=>{ if(e.key==="Escape"&&modal.classList.contains("open")) closeGame(); });
+document.getElementById("mFull").addEventListener("click",()=>{
+  const target=frame;
+  if(target.requestFullscreen) target.requestFullscreen();
+  else if(target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+  else if(target.webkitEnterFullscreen) target.webkitEnterFullscreen(); // iOS
+});
+</script>
+</body>
+</html>
