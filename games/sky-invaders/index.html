@@ -64,13 +64,22 @@
     display:block;position:fixed;inset:0;z-index:11;pointer-events:none;
   }
   body.touch #controlsHint{display:none}
-  .mgroup{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);display:flex;gap:16px;align-items:flex-end}
-  .mgroup.mleft{left:calc(env(safe-area-inset-left,0px) + 22px)}
-  .mgroup.mright{right:calc(env(safe-area-inset-right,0px) + 22px)}
+  .mgroup{
+    position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+  }
+  .mgroup.mleft{left:calc(env(safe-area-inset-left,0px) + 18px)}
+  .mgroup.mright{right:calc(env(safe-area-inset-right,0px) + 18px)}
+  .mlabel{
+    font-family:"Courier New",monospace;font-size:11px;letter-spacing:.28em;
+    color:var(--phosphor);opacity:.6;text-shadow:0 0 6px var(--phosphor);
+  }
+  .mrow{display:flex;gap:14px}
+  .mtop{display:flex;gap:12px;align-items:center;margin-bottom:2px}
   .mbtn{
     pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;
     display:flex;align-items:center;justify-content:center;
-    width:74px;height:74px;border-radius:50%;
+    width:72px;height:72px;border-radius:50%;
     font-family:"Courier New",monospace;font-weight:bold;font-size:26px;letter-spacing:.05em;
     color:var(--phosphor);
     background:rgba(6,20,10,0.5);
@@ -80,16 +89,36 @@
     backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
     transition:transform .05s, background .05s;
   }
-  .mbtn.small{width:56px;height:56px;font-size:24px;opacity:.9}
+  .mbtn.small{width:52px;height:52px;font-size:22px;opacity:.9}
+  .mbtn.aim{
+    border-color:rgba(255,217,138,0.7);color:var(--amber,#ffd98a);
+    background:rgba(40,30,6,0.5);
+    box-shadow:0 0 14px rgba(255,217,138,0.3), inset 0 0 12px rgba(255,217,138,0.14);
+    text-shadow:0 0 8px #ffd98a;
+  }
+  .mbtn.auto{
+    width:auto;height:52px;padding:0 16px;border-radius:26px;font-size:15px;letter-spacing:.14em;
+    color:#fff;border-color:rgba(255,120,120,0.7);background:rgba(60,10,10,0.5);
+    box-shadow:0 0 14px rgba(255,90,90,0.3);text-shadow:0 0 8px var(--alert);
+  }
   .mbtn.fire{
-    width:104px;height:104px;font-size:22px;
-    color:#fff;border-color:rgba(255,120,120,0.8);
-    background:rgba(60,10,10,0.5);
-    box-shadow:0 0 18px rgba(255,90,90,0.4), inset 0 0 16px rgba(255,90,90,0.18);
+    width:80px;height:80px;font-size:19px;
+    color:#fff;border-color:rgba(255,120,120,0.85);
+    background:rgba(60,10,10,0.55);
+    box-shadow:0 0 18px rgba(255,90,90,0.4), inset 0 0 16px rgba(255,90,90,0.16);
     text-shadow:0 0 8px var(--alert);
   }
+  .mbtn.auto.on{
+    color:#fff;border-color:rgba(255,90,90,1);background:rgba(200,40,40,0.7);
+    box-shadow:0 0 20px rgba(255,90,90,0.7);
+    animation:autoPulse 0.8s ease-in-out infinite;
+  }
+  @keyframes autoPulse{50%{box-shadow:0 0 30px rgba(255,90,90,0.95)}}
   .mbtn.active{transform:scale(0.9);background:rgba(93,255,109,0.28)}
-  .mbtn.fire.active{background:rgba(255,90,90,0.4)}
+  .mbtn.aim.active{background:rgba(255,217,138,0.32)}
+  .mbtn.fire.active{background:rgba(255,90,90,0.42)}
+  :root{--amber:#ffd98a}
+  @media (prefers-reduced-motion: reduce){ .mbtn.auto.on{animation:none} }
 </style>
 </head>
 <body>
@@ -109,12 +138,23 @@
 <!-- mobile controls (shown only on touch devices) -->
 <div id="touchControls">
   <div class="mgroup mleft">
-    <div class="mbtn" id="btnLeft">◄</div>
-    <div class="mbtn" id="btnRight">►</div>
+    <div class="mlabel">RUN</div>
+    <div class="mrow">
+      <div class="mbtn" id="btnLeft">◄</div>
+      <div class="mbtn" id="btnRight">►</div>
+    </div>
   </div>
   <div class="mgroup mright">
-    <div class="mbtn small" id="btnReload">⟳</div>
-    <div class="mbtn fire" id="btnFire">FIRE</div>
+    <div class="mtop">
+      <div class="mbtn small" id="btnReload">⟳</div>
+      <div class="mbtn auto" id="btnAuto">AUTO ○</div>
+    </div>
+    <div class="mlabel">AIM · FIRE · AIM</div>
+    <div class="mrow">
+      <div class="mbtn aim" id="btnAimL">◄</div>
+      <div class="mbtn fire" id="btnFire">FIRE</div>
+      <div class="mbtn aim" id="btnAimR">►</div>
+    </div>
   </div>
 </div>
 
@@ -360,9 +400,11 @@ function aliveCount(){ return invaders.filter(i=>i.alive).length; }
 
 /* ---------- input ---------- */
 const IS_TOUCH = ("ontouchstart" in window) || navigator.maxTouchPoints>0;
-state.touchMove = 0;        // -1 / 0 / +1 from on-screen buttons
-let autoFire = false;       // hold-to-fire from the FIRE button
-let aimTouchId = null;      // which finger is steering the crosshair
+state.touchMove = 0;        // -1 / 0 / +1 : run left/right (left thumb)
+state.aimSwivel = 0;        // -1 / 0 / +1 : sweep the gun (right thumb)
+let autoFire = false;       // toggled by the AUTO button on phones
+let heldFire = false;       // held FIRE button (manual)
+let aimTouchId = null;      // (desktop tap-to-start only)
 
 /* --- desktop mouse --- */
 window.addEventListener("mousemove", e=>{
@@ -374,38 +416,13 @@ window.addEventListener("mousedown", e=>{
   press();
 });
 
-/* --- drag-to-aim on the play field (canvas) --- */
-function aimFromTouch(t){
-  const r=canvas.getBoundingClientRect();
-  state.aimX=(t.clientX-r.left)*DPR;
-  // float the crosshair above the fingertip so the target isn't hidden
-  state.aimY=((t.clientY-r.top) - 64)*DPR;
-}
+/* --- touch on the play field: only used to START the game --- */
 canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
   if(AC.state==="suspended") AC.resume();
-  if(state.mode==="title" || state.mode==="gameover"){ startGame(); return; }
-  for(const t of e.changedTouches){
-    if(aimTouchId===null){
-      aimTouchId=t.identifier;
-      aimFromTouch(t);
-      if(state.mode==="play") fire();   // tap to shoot where you touched
-    }
-  }
+  if(state.mode==="title" || state.mode==="gameover"){ startGame(); }
 },{passive:false});
-canvas.addEventListener("touchmove", e=>{
-  e.preventDefault();
-  for(const t of e.changedTouches){
-    if(t.identifier===aimTouchId) aimFromTouch(t);
-  }
-},{passive:false});
-function endAimTouch(e){
-  for(const t of e.changedTouches){
-    if(t.identifier===aimTouchId) aimTouchId=null;
-  }
-}
-canvas.addEventListener("touchend", endAimTouch);
-canvas.addEventListener("touchcancel", endAimTouch);
+canvas.addEventListener("touchmove", e=>{ e.preventDefault(); },{passive:false});
 
 /* --- on-screen buttons --- */
 function bindButton(id, onDown, onUp){
@@ -420,10 +437,31 @@ function bindButton(id, onDown, onUp){
   el.addEventListener("mouseup",up);
   el.addEventListener("mouseleave",e=>{ el.classList.remove("active"); onUp&&onUp(); });
 }
+// left thumb: run
 bindButton("btnLeft",  ()=>state.touchMove=-1, ()=>{ if(state.touchMove===-1)state.touchMove=0; });
 bindButton("btnRight", ()=>state.touchMove=1,  ()=>{ if(state.touchMove===1)state.touchMove=0; });
-bindButton("btnFire",  ()=>{ autoFire=true; press(); }, ()=>autoFire=false);
+// right thumb: swivel the gun along the alien line
+bindButton("btnAimL",  ()=>state.aimSwivel=-1, ()=>{ if(state.aimSwivel===-1)state.aimSwivel=0; });
+bindButton("btnAimR",  ()=>state.aimSwivel=1,  ()=>{ if(state.aimSwivel===1)state.aimSwivel=0; });
+// reload
 bindButton("btnReload",()=>startReload());
+// manual fire — hold to keep firing (independent of AUTO)
+bindButton("btnFire",  ()=>{ heldFire=true; press(); }, ()=>heldFire=false);
+// auto-fire toggle
+const btnAuto=document.getElementById("btnAuto");
+if(btnAuto){
+  const toggle=e=>{
+    e.preventDefault();
+    if(AC.state==="suspended") AC.resume();
+    autoFire=!autoFire;
+    btnAuto.classList.toggle("on",autoFire);
+    btnAuto.textContent = autoFire ? "AUTO ●" : "AUTO ○";
+    // starting the game from the AUTO button if on a menu
+    if(state.mode==="title" || state.mode==="gameover") startGame();
+  };
+  btnAuto.addEventListener("touchstart",toggle,{passive:false});
+  btnAuto.addEventListener("mousedown",toggle);
+}
 
 /* --- keyboard --- */
 window.addEventListener("keydown", e=>{
@@ -441,6 +479,8 @@ function press(){
 // show touch controls only on touch devices
 if(IS_TOUCH){
   document.body.classList.add("touch");
+  // start the aim centered on the alien line
+  state.aimX=CX; state.aimY=CY*0.62;
 }
 
 function startGame(){
@@ -580,8 +620,25 @@ function update(dt){
   state.camX += state.vel*dt;
   state.camX = Math.max(-PLAYER_RANGE,Math.min(PLAYER_RANGE,state.camX));
   state.sway += (state.vel/RUN*0.022 - state.sway)*Math.min(1,dt*6);
-  // hold-to-fire (mobile FIRE button); fire() self-limits its cadence
-  if(autoFire && state.mode==="play" && !state.reloading && state.ammo>0) fire();
+
+  /* aim swivel (right thumb) — sweep the crosshair along the alien line */
+  if(state.aimSwivel!==0 && (state.mode==="play"||state.mode==="wavein"||state.mode==="dying")){
+    const SWIVEL=620*DPR;
+    state.aimX += state.aimSwivel*SWIVEL*dt;
+    state.aimX = Math.max(30*DPR, Math.min(W-30*DPR, state.aimX));
+  }
+  // on touch, keep the crosshair pinned to the alien line height so it can't drift off
+  if(IS_TOUCH && formation){
+    const lineY = CY + formation.y*posS(formation.z);
+    state.aimY += (lineY - state.aimY)*Math.min(1,dt*7);
+  }
+
+  // fire when AUTO toggle is on OR the manual FIRE button is held; fire() self-limits cadence
+  if((autoFire || heldFire) && state.mode==="play"){
+    if(state.reloading){ /* wait */ }
+    else if(state.ammo>0) fire();
+    else if(autoFire) startReload();   // AUTO reloads for you; manual doesn't force it
+  }
   // footsteps
   if(Math.abs(state.vel)>120){
     state.stepT+=dt*Math.abs(state.vel)/130;
